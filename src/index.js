@@ -42,11 +42,12 @@ CONFIG.colors.ratio = {
     b: (CONFIG.colors.topColor.b - CONFIG.colors.baseColor.b)
 };
 
-let renderer, camera, scene, controls;
+let renderer, camera, scene, controls, raycaster, mouse;
 let floor = {
-    vertices:   [],
-    colors:     [],
-    elements:   []
+    vertices:             [],
+    colors:               [],
+    elements:             [],
+    interactionElements:  []
 };
 
 function init() {
@@ -72,6 +73,24 @@ function init() {
 		renderer.shadowMap.type = THREE.PCFShadowMap;
 
 		document.body.appendChild(renderer.domElement);
+
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        function onMouseMove( event ) {
+
+            // calculate mouse position in normalized device coordinates
+            // (-1 to +1) for both components
+
+            mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+            mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+        }
+
+        window.addEventListener( 'mousemove', onMouseMove, false );
+
+        window.requestAnimationFrame(render);
 	}
 
 	function initIndicator() {
@@ -146,6 +165,22 @@ function init() {
                 scene.add(newLine);
             }
         }
+
+        setTimeout(function() {
+            // Interaction elements. TODO: make it generic, this is just for tests
+            const geometry = new THREE.Geometry();
+            const material = new THREE.PointsMaterial({
+                size: 3,
+                sizeAttenuation: false,
+                vertexColors: THREE.VertexColors
+            });
+            geometry.vertices.push(new THREE.Vector3(0, 6.3, 0));
+            geometry.colors.push(new THREE.Color(0xffffff));
+
+            floor.interactionElements.push(new THREE.Points(geometry, material));
+
+            scene.add(floor.interactionElements[0]);
+        }, 4000);
     }
 
 
@@ -163,13 +198,29 @@ function init() {
 
 	initWebGL();
 	initIndicator();
-	initLight();
+	// initLight();
 
 	initFloor();
 }
 
 function render() {
-    renderer.render(scene, camera);
+    raycaster.setFromCamera( mouse, camera );
+
+    const infoElement = document.getElementById("info");
+
+    if (infoElement) {
+        const intersects = raycaster.intersectObjects( floor.interactionElements );
+
+        if (!intersects.length) {
+            infoElement.innerText = "";
+        }
+
+        intersects.forEach(function(element) {
+            infoElement.innerText = "赤岳 (akadake, mt. Aka), 2899m n.p.m.";
+        });
+    }
+
+    renderer.render( scene, camera );
 }
 
 
@@ -211,7 +262,6 @@ function getColor(height) {
 }
 
 function animate() {
-
     // Animate floor:
 	for (let x = 0; x < FLOOR.SIZE; x++) {
 	    for (let z = 0; z < FLOOR.SIZE; z++) {
