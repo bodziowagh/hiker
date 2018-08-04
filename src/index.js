@@ -15,6 +15,21 @@ const CONFIG = {
     displayDirectionsIndicator: false,
     camera: {
         autoRotate: true
+    },
+    colors: {
+        baseColor: {
+            r: 70  / 255,
+            g: 183 / 255,
+            b: 55  / 255
+        },
+        topColor: {
+            r: 199 / 255,
+            g: 40   / 255,
+            b: 0  / 255
+        }
+    },
+    map: {
+        maxHeight: 6
     }
 };
 
@@ -81,12 +96,13 @@ function init() {
 		const material = new THREE.PointsMaterial({
 			size: 2,
 			sizeAttenuation: false,
-			color: FLOOR.COLOR
+            vertexColors: THREE.VertexColors
 		});
 
         for (let x = -FLOOR.SIZE / 2; x < FLOOR.SIZE / 2; x++) {
             for (let z = -FLOOR.SIZE / 2; z < FLOOR.SIZE / 2; z++) {
                 geometry.vertices.push(new THREE.Vector3(x, 0, z));
+                geometry.colors.push(new THREE.Color(0x000000));
             }
         }
 
@@ -134,6 +150,31 @@ function getIncrementValue(currentY, targetY) {
     return 0;
 }
 
+function getColor(height) {
+    const heightRatio = height / CONFIG.map.maxHeight;
+
+    // TODO: move this outside so it's not calculated per vertex
+    const ratio = {
+        r: (CONFIG.colors.topColor.r - CONFIG.colors.baseColor.r),
+        g: (CONFIG.colors.topColor.g - CONFIG.colors.baseColor.g),
+        b: (CONFIG.colors.topColor.b - CONFIG.colors.baseColor.b)
+    };
+
+    if (heightRatio >= 1) {
+        return CONFIG.colors.topColor;
+    }
+
+    if (heightRatio <= 0) {
+        return CONFIG.colors.baseColor;
+    }
+
+    return {
+        r: CONFIG.colors.baseColor.r + (heightRatio * ratio.r),
+        g: CONFIG.colors.baseColor.g + (heightRatio * ratio.g),
+        b: CONFIG.colors.baseColor.b + (heightRatio * ratio.b)
+    };
+}
+
 function animate() {
     // Animate floor:
 	for (let x = 0; x < FLOOR.SIZE; x++) {
@@ -144,10 +185,14 @@ function animate() {
 	        if (currentPoint.y < HEIGHT_MAP[i]) {   // TODO: move to getIncrementValue ?
                 currentPoint.y += getIncrementValue(currentPoint.y, HEIGHT_MAP[i]);
             }
+
+            floor.geometry.colors[i] = getColor(currentPoint.y);
+
         }
     }
 
     floor.geometry.verticesNeedUpdate = true;
+    floor.geometry.colorsNeedUpdate = true;
 
     controls.update();
 	requestAnimationFrame(animate);
